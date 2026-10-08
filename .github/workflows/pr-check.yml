@@ -1,0 +1,78 @@
+# =============================================================================
+# PR Check — Validaciones específicas para Pull Requests
+# Verifica convenciones de commits y añade comentario con resumen
+# =============================================================================
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Verificar que el título del PR sigue Conventional Commits
+  # ────────────────────────────────────────────────────────────────────────────
+  conventional-title:
+    name: 📝 Título del PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verificar formato del título del PR
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            test
+            refactor
+            chore
+            style
+            perf
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            El título del PR no debe comenzar con mayúscula.
+            Ejemplo correcto: "feat(reservas): agregar endpoint de cancelación"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Comentario automático con resumen del PR
+  # ────────────────────────────────────────────────────────────────────────────
+  pr-summary:
+    name: 💬 Comentario de resumen
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+
+    steps:
+      - name: Publicar comentario de bienvenida al PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 👋 Revisión de Pull Request
+
+            Gracias por tu contribución, @${{ github.actor }}.
+
+            ### ✅ Checklist de revisión
+
+            - [ ] El código sigue los estándares definidos en [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md)
+            - [ ] Las pruebas cubren los nuevos cambios
+            - [ ] No hay secretos ni credenciales en el código
+            - [ ] La documentación está actualizada si fue necesario
+            - [ ] El título del PR sigue [Conventional Commits](https://www.conventionalcommits.org/)
+
+            ### 📊 Pipeline
+
+            Los jobs de CI deben pasar antes de hacer merge. Si fallan, revisa los logs en la pestaña **Actions**.
+
+            ---
+            *Este comentario fue generado automáticamente por el workflow de CI.*`
+            })

@@ -1,0 +1,765 @@
+openapi: 3.0.3
+info:
+  title: API Sistema de Reservas de Salas de Biblioteca
+  description: |
+    API REST para la gestión y reserva de salas de estudio en una biblioteca universitaria.
+    
+    ## Autenticación
+    La mayoría de los endpoints requieren autenticación mediante **JWT Bearer Token**.
+    Para obtener el token, usa el endpoint `POST /auth/login`.
+    
+    ## Roles
+    - **usuario**: Puede ver salas, crear y cancelar sus propias reservas
+    - **admin**: Acceso completo, incluyendo gestión de salas y todos los usuarios
+  version: 1.0.0
+  contact:
+    name: Equipo 5 - Ingeniería de Software
+    email: equipo5@biblioteca.edu
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Servidor de desarrollo local
+  - url: https://reservas-biblioteca.railway.app/api/v1
+    description: Servidor de producción (Railway)
+
+tags:
+  - name: Autenticación
+    description: Registro e inicio de sesión de usuarios
+  - name: Salas
+    description: Gestión de salas de estudio
+  - name: Reservas
+    description: Gestión de reservas de salas
+  - name: Usuarios
+    description: Gestión de perfil de usuario
+
+# ─── Componentes reutilizables ────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ── Respuesta estándar de éxito ──
+    RespuestaExito:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        mensaje:
+          type: string
+          example: Operación exitosa
+        datos:
+          description: Payload de la respuesta (varía por endpoint)
+
+    # ── Respuesta estándar de error ──
+    RespuestaError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        mensaje:
+          type: string
+          example: Error en la solicitud
+        errores:
+          type: array
+          items:
+            type: object
+            properties:
+              campo:
+                type: string
+              mensaje:
+                type: string
+
+    # ── Entidad Usuario ──
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: María García
+        email:
+          type: string
+          format: email
+          example: maria@biblioteca.edu
+        rol:
+          type: string
+          enum: [usuario, admin]
+          example: usuario
+        fecha_registro:
+          type: string
+          format: date-time
+
+    # ── Entidad Sala ──
+    Sala:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        nombre:
+          type: string
+          example: Sala C - Grupos Medianos
+        capacidad:
+          type: integer
+          example: 8
+        ubicacion:
+          type: string
+          example: Primer Piso, Sala 101
+        descripcion:
+          type: string
+          example: Sala amplia para grupos con proyector
+        activa:
+          type: integer
+          example: 1
+        fecha_creacion:
+          type: string
+          format: date-time
+
+    # ── Entidad Reserva ──
+    Reserva:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        usuario_id:
+          type: integer
+          example: 5
+        sala_id:
+          type: integer
+          example: 3
+        fecha:
+          type: string
+          format: date
+          example: "2026-10-15"
+        hora_inicio:
+          type: string
+          example: "09:00"
+        hora_fin:
+          type: string
+          example: "11:00"
+        proposito:
+          type: string
+          example: Reunión de proyecto final
+        estado:
+          type: string
+          enum: [activa, cancelada, completada]
+          example: activa
+        sala_nombre:
+          type: string
+          example: Sala C - Grupos Medianos
+        usuario_nombre:
+          type: string
+          example: María García
+        fecha_creacion:
+          type: string
+          format: date-time
+
+  responses:
+    No autorizado:
+      description: Token JWT ausente o inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RespuestaError'
+          example:
+            success: false
+            mensaje: Acceso denegado. Se requiere token de autenticación
+
+    NoEncontrado:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RespuestaError'
+          example:
+            success: false
+            mensaje: Recurso no encontrado
+
+    ErrorValidacion:
+      description: Error de validación en los datos enviados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RespuestaError'
+
+    ErrorServidor:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RespuestaError'
+
+# ─── Rutas ───────────────────────────────────────────────────────────────────
+paths:
+
+  # ══════════════════════════════════════════
+  # AUTENTICACIÓN
+  # ══════════════════════════════════════════
+
+  /auth/registro:
+    post:
+      tags: [Autenticación]
+      summary: Registrar nuevo usuario
+      description: Crea una cuenta nueva en el sistema con rol `usuario` por defecto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, email, password]
+              properties:
+                nombre:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: María García
+                email:
+                  type: string
+                  format: email
+                  example: maria@biblioteca.edu
+                password:
+                  type: string
+                  minLength: 8
+                  description: Mínimo 8 caracteres, una mayúscula y un número
+                  example: Segura123
+      responses:
+        '201':
+          description: Usuario registrado correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: object
+                        properties:
+                          id: { type: integer }
+                          nombre: { type: string }
+                          email: { type: string }
+        '409':
+          description: El email ya está registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaError'
+        '422':
+          $ref: '#/components/responses/ErrorValidacion'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión
+      description: Autentica al usuario y devuelve un token JWT válido por 24 horas.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: maria@biblioteca.edu
+                password:
+                  type: string
+                  example: Segura123
+      responses:
+        '200':
+          description: Inicio de sesión exitoso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          usuario:
+                            $ref: '#/components/schemas/Usuario'
+        '401':
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaError'
+        '422':
+          $ref: '#/components/responses/ErrorValidacion'
+
+  # ══════════════════════════════════════════
+  # SALAS
+  # ══════════════════════════════════════════
+
+  /salas:
+    get:
+      tags: [Salas]
+      summary: Listar todas las salas activas
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de salas obtenida correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Sala'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+
+    post:
+      tags: [Salas]
+      summary: Crear nueva sala (solo admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, capacidad, ubicacion]
+              properties:
+                nombre:
+                  type: string
+                  maxLength: 100
+                  example: Sala F - Silencio Absoluto
+                capacidad:
+                  type: integer
+                  minimum: 1
+                  maximum: 200
+                  example: 2
+                ubicacion:
+                  type: string
+                  maxLength: 200
+                  example: Tercer Piso, Zona Silencio
+                descripcion:
+                  type: string
+                  maxLength: 500
+                  example: Sala de silencio absoluto para concentración máxima
+      responses:
+        '201':
+          description: Sala creada correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        $ref: '#/components/schemas/Sala'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '403':
+          description: Se requieren permisos de administrador
+        '422':
+          $ref: '#/components/responses/ErrorValidacion'
+
+  /salas/disponibles:
+    get:
+      tags: [Salas]
+      summary: Consultar salas disponibles por fecha y horario
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fecha
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2026-10-15"
+        - name: hora_inicio
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: "09:00"
+        - name: hora_fin
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: "11:00"
+      responses:
+        '200':
+          description: Salas disponibles para el horario indicado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Sala'
+        '400':
+          description: La hora de inicio debe ser anterior a la hora de fin
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '422':
+          $ref: '#/components/responses/ErrorValidacion'
+
+  /salas/{id}:
+    get:
+      tags: [Salas]
+      summary: Obtener una sala por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sala encontrada
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        $ref: '#/components/schemas/Sala'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+    put:
+      tags: [Salas]
+      summary: Actualizar una sala (solo admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, capacidad, ubicacion]
+              properties:
+                nombre:
+                  type: string
+                capacidad:
+                  type: integer
+                ubicacion:
+                  type: string
+                descripcion:
+                  type: string
+      responses:
+        '200':
+          description: Sala actualizada correctamente
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '403':
+          description: Se requieren permisos de administrador
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+    delete:
+      tags: [Salas]
+      summary: Eliminar (desactivar) una sala (solo admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sala eliminada correctamente
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '403':
+          description: Se requieren permisos de administrador
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  /salas/{id}/reservas:
+    get:
+      tags: [Salas]
+      summary: Listar reservas activas de una sala
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reservas de la sala obtenidas
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Reserva'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  # ══════════════════════════════════════════
+  # RESERVAS
+  # ══════════════════════════════════════════
+
+  /reservas:
+    get:
+      tags: [Reservas]
+      summary: Listar reservas del usuario autenticado (admin ve todas)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reservas obtenidas correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Reserva'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+
+    post:
+      tags: [Reservas]
+      summary: Crear una nueva reserva
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sala_id, fecha, hora_inicio, hora_fin]
+              properties:
+                sala_id:
+                  type: integer
+                  example: 3
+                fecha:
+                  type: string
+                  format: date
+                  example: "2026-10-15"
+                hora_inicio:
+                  type: string
+                  pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+                  example: "09:00"
+                hora_fin:
+                  type: string
+                  pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+                  example: "11:00"
+                proposito:
+                  type: string
+                  maxLength: 300
+                  example: Reunión de proyecto final de Ingeniería
+      responses:
+        '201':
+          description: Reserva creada correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        $ref: '#/components/schemas/Reserva'
+        '400':
+          description: La hora de inicio debe ser anterior a la hora de fin
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '404':
+          description: La sala especificada no existe
+        '409':
+          description: La sala ya tiene una reserva en ese horario
+        '422':
+          $ref: '#/components/responses/ErrorValidacion'
+
+  /reservas/{id}:
+    get:
+      tags: [Reservas]
+      summary: Obtener detalle de una reserva
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reserva encontrada
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        $ref: '#/components/schemas/Reserva'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '403':
+          description: No tienes permiso para ver esta reserva
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+    delete:
+      tags: [Reservas]
+      summary: Cancelar una reserva
+      description: Cambia el estado de la reserva a `cancelada`. Solo el dueño o un admin pueden cancelarla.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reserva cancelada correctamente
+        '400':
+          description: La reserva ya estaba cancelada
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '403':
+          description: No tienes permiso para cancelar esta reserva
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  # ══════════════════════════════════════════
+  # USUARIOS
+  # ══════════════════════════════════════════
+
+  /usuarios/perfil:
+    get:
+      tags: [Usuarios]
+      summary: Obtener perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil obtenido correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        $ref: '#/components/schemas/Usuario'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+
+    put:
+      tags: [Usuarios]
+      summary: Actualizar perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: María García López
+                email:
+                  type: string
+                  format: email
+                  example: maria.garcia@biblioteca.edu
+      responses:
+        '200':
+          description: Perfil actualizado correctamente
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '409':
+          description: El email ya está en uso por otro usuario
+
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Listar todos los usuarios (solo admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Usuarios obtenidos correctamente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/RespuestaExito'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Usuario'
+        '401':
+          $ref: '#/components/responses/No autorizado'
+        '403':
+          description: Se requieren permisos de administrador

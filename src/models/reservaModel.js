@@ -1,0 +1,146 @@
+/**
+ * Modelo de Reserva
+ * Maneja todas las operaciones de base de datos relacionadas con reservas
+ */
+
+const { consultar, consultarUno, ejecutar } = require('../config/database');
+
+/**
+ * Crea una nueva reserva
+ * @param {Object} reserva - { usuario_id, sala_id, fecha, hora_inicio, hora_fin, proposito }
+ * @returns {Promise<{lastID: number}>}
+ */
+const crear = async ({ usuario_id, sala_id, fecha, hora_inicio, hora_fin, proposito = null }) => {
+  const sql = `
+    INSERT INTO reservas (usuario_id, sala_id, fecha, hora_inicio, hora_fin, proposito, estado)
+    VALUES (?, ?, ?, ?, ?, ?, 'activa')
+  `;
+  return ejecutar(sql, [usuario_id, sala_id, fecha, hora_inicio, hora_fin, proposito]);
+};
+
+/**
+ * Obtiene todas las reservas de un usuario
+ * @param {number} usuarioId
+ * @returns {Promise<Array>}
+ */
+const obtenerPorUsuario = async (usuarioId) => {
+  const sql = `
+    SELECT
+      r.id, r.fecha, r.hora_inicio, r.hora_fin, r.proposito, r.estado, r.fecha_creacion,
+      s.id AS sala_id, s.nombre AS sala_nombre, s.ubicacion AS sala_ubicacion
+    FROM reservas r
+    JOIN salas s ON r.sala_id = s.id
+    WHERE r.usuario_id = ?
+    ORDER BY r.fecha DESC, r.hora_inicio DESC
+  `;
+  return consultar(sql, [usuarioId]);
+};
+
+/**
+ * Obtiene todas las reservas de una sala
+ * @param {number} salaId
+ * @returns {Promise<Array>}
+ */
+const obtenerPorSala = async (salaId) => {
+  const sql = `
+    SELECT
+      r.id, r.fecha, r.hora_inicio, r.hora_fin, r.proposito, r.estado,
+      u.nombre AS usuario_nombre
+    FROM reservas r
+    JOIN usuarios u ON r.usuario_id = u.id
+    WHERE r.sala_id = ? AND r.estado != 'cancelada'
+    ORDER BY r.fecha ASC, r.hora_inicio ASC
+  `;
+  return consultar(sql, [salaId]);
+};
+
+/**
+ * Busca una reserva por su ID
+ * @param {number} id
+ * @returns {Promise<Object|null>}
+ */
+const buscarPorId = async (id) => {
+  const sql = `
+    SELECT
+      r.id, r.usuario_id, r.sala_id, r.fecha, r.hora_inicio,
+      r.hora_fin, r.proposito, r.estado, r.fecha_creacion,
+      s.nombre AS sala_nombre,
+      u.nombre AS usuario_nombre
+    FROM reservas r
+    JOIN salas s ON r.sala_id = s.id
+    JOIN usuarios u ON r.usuario_id = u.id
+    WHERE r.id = ?
+  `;
+  return consultarUno(sql, [id]);
+};
+
+/**
+ * Verifica si hay conflicto de horario para una sala en una fecha dada
+ * @param {number} salaId
+ * @param {string} fecha
+ * @param {string} horaInicio
+ * @param {string} horaFin
+ * @param {number|null} excluirReservaId - Para excluir al actualizar
+ * @returns {Promise<boolean>}
+ */
+const existeConflicto = async (salaId, fecha, horaInicio, horaFin, excluirReservaId = null) => {
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM reservas
+    WHERE sala_id = ?
+      AND fecha = ?
+      AND estado != 'cancelada'
+      AND (
+        (hora_inicio < ? AND hora_fin > ?)
+        OR (hora_inicio < ? AND hora_fin > ?)
+        OR (hora_inicio >= ? AND hora_fin <= ?)
+      )
+  `;
+  const params = [salaId, fecha, horaFin, horaInicio, horaFin, horaInicio, horaInicio, horaFin];
+
+  if (excluirReservaId) {
+    sql += ' AND id != ?';
+    params.push(excluirReservaId);
+  }
+
+  const resultado = await consultarUno(sql, params);
+  return resultado.total > 0;
+};
+
+/**
+ * Cancela una reserva cambiando su estado
+ * @param {number} id
+ * @returns {Promise<{changes: number}>}
+ */
+const cancelar = async (id) => {
+  const sql = "UPDATE reservas SET estado = 'cancelada' WHERE id = ?";
+  return ejecutar(sql, [id]);
+};
+
+/**
+ * Obtiene todas las reservas (solo para admins)
+ * @returns {Promise<Array>}
+ */
+const obtenerTodas = async () => {
+  const sql = `
+    SELECT
+      r.id, r.fecha, r.hora_inicio, r.hora_fin, r.proposito, r.estado, r.fecha_creacion,
+      s.nombre AS sala_nombre,
+      u.nombre AS usuario_nombre, u.email AS usuario_email
+    FROM reservas r
+    JOIN salas s ON r.sala_id = s.id
+    JOIN usuarios u ON r.usuario_id = u.id
+    ORDER BY r.fecha DESC, r.hora_inicio DESC
+  `;
+  return consultar(sql);
+};
+
+module.exports = {
+  crear,
+  obtenerPorUsuario,
+  obtenerPorSala,
+  buscarPorId,
+  existeConflicto,
+  cancelar,
+  obtenerTodas,
+};
