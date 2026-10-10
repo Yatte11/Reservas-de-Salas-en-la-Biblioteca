@@ -113,6 +113,18 @@ const validarDisponibilidad = [
   validar,
 ];
 
+const validarFiltrosReserva = [
+  query('estado')
+    .optional()
+    .isIn(['activa', 'cancelada', 'completada'])
+    .withMessage('El estado debe ser \'activa\', \'cancelada\' o \'completada\''),
+  query('fecha')
+    .optional()
+    .isDate({ format: 'YYYY-MM-DD', strictMode: true })
+    .withMessage('La fecha debe tener formato YYYY-MM-DD y ser una fecha real'),
+  validar,
+];
+
 module.exports = {
   validarRegistro,
   validarLogin,
@@ -120,4 +132,5 @@ module.exports = {
   validarCrearReserva,
   validarIdParam,
   validarDisponibilidad,
+  validarFiltrosReserva,
 };
