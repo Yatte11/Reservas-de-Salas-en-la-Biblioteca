@@ -33,7 +33,6 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copiar el código fuente y la base de datos
 COPY src/ ./src/
 COPY database/ ./database/
-COPY docs/arquitectura/openapi.yaml ./docs/arquitectura/openapi.yaml
 
 # Crear directorio para la base de datos con permisos correctos
 RUN mkdir -p /app/data && chown -R appuser:appgroup /app

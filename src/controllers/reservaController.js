@@ -51,34 +51,67 @@ const obtenerReserva = async (req, res, next) => {
 };
 
 /**
+ * Calcula la duración en horas entre dos strings HH:MM
+ * @param {string} horaInicio
+ * @param {string} horaFin
+ * @returns {number}
+ */
+const calcularDuracionHoras = (horaInicio, horaFin) => {
+  const [hIni, mIni] = horaInicio.split(':').map(Number);
+  const [hFin, mFin] = horaFin.split(':').map(Number);
+  return ((hFin * 60 + mFin) - (hIni * 60 + mIni)) / 60;
+};
+
+/**
  * POST /api/v1/reservas
- * Crea una nueva reserva para el usuario autenticado
+ * Crea una nueva reserva para el usuario autenticado.
+ * Valida:
+ *   - hora_inicio < hora_fin
+ *   - duración mínima de 30 minutos
+ *   - que la sala exista y esté activa
+ *   - que no haya choque de horario con otra reserva activa en esa sala
  */
 const crearReserva = async (req, res, next) => {
   try {
     const { sala_id, fecha, hora_inicio, hora_fin, proposito } = req.body;
 
-    // Validar que hora_inicio < hora_fin
+    // 1. Validar que hora_inicio < hora_fin
     if (hora_inicio >= hora_fin) {
       return error(res, 'La hora de inicio debe ser anterior a la hora de fin', 400);
     }
 
-    // Verificar que la sala existe
-    const sala = await SalaModel.buscarPorId(sala_id);
-    if (!sala) {
-      return error(res, 'La sala especificada no existe', 404);
+    // 2. Validar duración mínima de 30 minutos
+    const duracionHoras = calcularDuracionHoras(hora_inicio, hora_fin);
+    if (duracionHoras < 0.5) {
+      return error(res, 'La reserva debe tener una duración mínima de 30 minutos', 400);
     }
 
-    // Verificar que no haya conflicto de horario
+    // 3. Verificar que la sala existe y está activa
+    const sala = await SalaModel.buscarPorId(sala_id);
+    if (!sala) {
+      return error(res, 'La sala especificada no existe o no está disponible', 404);
+    }
+
+    // 4. Verificar que no haya choque de horario en esa sala
     const hayConflicto = await ReservaModel.existeConflicto(sala_id, fecha, hora_inicio, hora_fin);
     if (hayConflicto) {
       return error(
         res,
-        'La sala ya tiene una reserva en ese horario. Por favor elige otro horario.',
+        `La sala "${sala.nombre}" ya está reservada en ese horario. Consulta la disponibilidad e intenta con otro horario.`,
         409
       );
     }
 
+    // 5. Calcular horas ya reservadas por este usuario en esa fecha (informativo)
+    const horasReservadas = await ReservaModel.calcularHorasReservadasEnDia(req.usuario.id, fecha);
+    logger.info('Horas reservadas por usuario en el día', {
+      usuario: req.usuario.id,
+      fecha,
+      horasReservadas,
+      horasNuevas: duracionHoras,
+    });
+
+    // 6. Crear la reserva
     const { lastID } = await ReservaModel.crear({
       usuario_id: req.usuario.id,
       sala_id,
@@ -93,10 +126,16 @@ const crearReserva = async (req, res, next) => {
       usuario: req.usuario.id,
       sala: sala_id,
       fecha,
+      duracionHoras,
     });
 
     const reservaNueva = await ReservaModel.buscarPorId(lastID);
-    return exito(res, reservaNueva, 'Reserva creada correctamente', 201);
+    return exito(
+      res,
+      { ...reservaNueva, duracion_horas: duracionHoras },
+      `Reserva creada correctamente en "${sala.nombre}" por ${duracionHoras} hora(s)`,
+      201
+    );
   } catch (err) {
     next(err);
   }
