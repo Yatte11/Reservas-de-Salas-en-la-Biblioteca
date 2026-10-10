@@ -19,21 +19,37 @@ const crear = async ({ usuario_id, sala_id, fecha, hora_inicio, hora_fin, propos
 };
 
 /**
- * Obtiene todas las reservas de un usuario
+ * Obtiene todas las reservas de un usuario con filtros opcionales
  * @param {number} usuarioId
+ * @param {Object} filtros          - Filtros opcionales
+ * @param {string} [filtros.estado] - 'activa' | 'cancelada' | 'completada'
+ * @param {string} [filtros.fecha]  - Fecha en formato YYYY-MM-DD
  * @returns {Promise<Array>}
  */
-const obtenerPorUsuario = async (usuarioId) => {
+const obtenerPorUsuario = async (usuarioId, filtros = {}) => {
+  const params = [usuarioId];
+  let condicionesExtra = '';
+
+  if (filtros.estado) {
+    condicionesExtra += ' AND r.estado = ?';
+    params.push(filtros.estado);
+  }
+
+  if (filtros.fecha) {
+    condicionesExtra += ' AND r.fecha = ?';
+    params.push(filtros.fecha);
+  }
+
   const sql = `
     SELECT
       r.id, r.fecha, r.hora_inicio, r.hora_fin, r.proposito, r.estado, r.fecha_creacion,
       s.id AS sala_id, s.nombre AS sala_nombre, s.ubicacion AS sala_ubicacion
     FROM reservas r
     JOIN salas s ON r.sala_id = s.id
-    WHERE r.usuario_id = ?
+    WHERE r.usuario_id = ?${condicionesExtra}
     ORDER BY r.fecha DESC, r.hora_inicio DESC
   `;
-  return consultar(sql, [usuarioId]);
+  return consultar(sql, params);
 };
 
 /**
@@ -113,7 +129,7 @@ const existeConflicto = async (salaId, fecha, horaInicio, horaFin, excluirReserv
  * @returns {Promise<{changes: number}>}
  */
 const cancelar = async (id) => {
-  const sql = "UPDATE reservas SET estado = 'cancelada' WHERE id = ?";
+  const sql = 'UPDATE reservas SET estado = \'cancelada\' WHERE id = ?';
   return ejecutar(sql, [id]);
 };
 

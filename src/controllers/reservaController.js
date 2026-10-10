@@ -18,7 +18,8 @@ const listarReservas = async (req, res, next) => {
     if (req.usuario.rol === 'admin') {
       reservas = await ReservaModel.obtenerTodas();
     } else {
-      reservas = await ReservaModel.obtenerPorUsuario(req.usuario.id);
+      const { estado, fecha } = req.query;
+      reservas = await ReservaModel.obtenerPorUsuario(req.usuario.id, { estado, fecha });
     }
     return exito(res, reservas, 'Reservas obtenidas correctamente');
   } catch (err) {
@@ -121,6 +122,44 @@ const cancelarReserva = async (req, res, next) => {
 
     if (reserva.estado === 'cancelada') {
       return error(res, 'La reserva ya está cancelada', 400);
+    }
+
+    if (reserva.estado === 'completada') {
+      return error(res, 'No se puede cancelar una reserva que ya fue completada', 400);
+    }
+
+    // Validar formato de fecha y hora antes de operar con ellos
+    const formatoFecha = /^\d{4}-\d{2}-\d{2}$/;
+    const formatoHora  = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+    if (!formatoFecha.test(reserva.fecha) || !formatoHora.test(reserva.hora_inicio)) {
+      return error(res, 'La reserva tiene datos de fecha u hora inválidos', 500);
+    }
+
+    // Verificar que la fecha exista realmente en el calendario
+    // (rechaza casos como 2026-02-30 que JS ajusta silenciosamente)
+    const [anio, mes, dia] = reserva.fecha.split('-').map(Number);
+    const verificacionFecha = new Date(Date.UTC(anio, mes - 1, dia));
+    const fechaEsReal =
+      verificacionFecha.getUTCFullYear() === anio &&
+      verificacionFecha.getUTCMonth() + 1 === mes &&
+      verificacionFecha.getUTCDate()      === dia;
+
+    if (!fechaEsReal) {
+      return error(res, 'La reserva tiene una fecha inválida en el calendario', 500);
+    }
+
+    // Construir el instante de inicio con offset de Ecuador (UTC-05:00)
+    // para que la comparación sea correcta sin importar la zona del servidor
+    const inicioReserva = new Date(`${reserva.fecha}T${reserva.hora_inicio}:00-05:00`);
+
+    // Guardia final: si por alguna razón el Date es NaN, no comparar
+    if (isNaN(inicioReserva.getTime())) {
+      return error(res, 'La reserva tiene datos de fecha u hora inválidos', 500);
+    }
+
+    if (inicioReserva <= new Date()) {
+      return error(res, 'No se puede cancelar una reserva que ya ha comenzado o finalizado', 400);
     }
 
     await ReservaModel.cancelar(id);

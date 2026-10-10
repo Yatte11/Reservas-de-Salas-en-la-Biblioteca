@@ -10,9 +10,9 @@ const express = require('express');
 const router = express.Router();
 const reservaController = require('../controllers/reservaController');
 const { verificarToken } = require('../middlewares/authMiddleware');
-const { validarCrearReserva, validarIdParam } = require('../middlewares/validators');
+const { validarCrearReserva, validarIdParam, validarFiltrosReserva } = require('../middlewares/validators');
 
-router.get('/', verificarToken, reservaController.listarReservas);
+router.get('/', verificarToken, validarFiltrosReserva, reservaController.listarReservas);
 router.get('/:id', verificarToken, validarIdParam, reservaController.obtenerReserva);
 router.post('/', verificarToken, validarCrearReserva, reservaController.crearReserva);
 router.delete('/:id', verificarToken, validarIdParam, reservaController.cancelarReserva);
