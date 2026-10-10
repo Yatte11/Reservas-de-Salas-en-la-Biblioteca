@@ -108,12 +108,39 @@ const existeConflicto = async (salaId, fecha, horaInicio, horaFin, excluirReserv
 };
 
 /**
+ * Calcula el total de horas reservadas por un usuario en una fecha concreta
+ * Útil para aplicar reglas de límite diario
+ * @param {number} usuarioId
+ * @param {string} fecha - Formato YYYY-MM-DD
+ * @returns {Promise<number>} Total de horas reservadas ese día
+ */
+const calcularHorasReservadasEnDia = async (usuarioId, fecha) => {
+  const sql = `
+    SELECT hora_inicio, hora_fin
+    FROM reservas
+    WHERE usuario_id = ?
+      AND fecha = ?
+      AND estado != 'cancelada'
+  `;
+  const reservas = await consultar(sql, [usuarioId, fecha]);
+
+  // Suma los minutos de cada reserva y convierte a horas
+  const totalMinutos = reservas.reduce((acum, r) => {
+    const [hIni, mIni] = r.hora_inicio.split(':').map(Number);
+    const [hFin, mFin] = r.hora_fin.split(':').map(Number);
+    return acum + (hFin * 60 + mFin) - (hIni * 60 + mIni);
+  }, 0);
+
+  return totalMinutos / 60;
+};
+
+/**
  * Cancela una reserva cambiando su estado
  * @param {number} id
  * @returns {Promise<{changes: number}>}
  */
 const cancelar = async (id) => {
-  const sql = "UPDATE reservas SET estado = 'cancelada' WHERE id = ?";
+  const sql = 'UPDATE reservas SET estado = \'cancelada\' WHERE id = ?';
   return ejecutar(sql, [id]);
 };
 
@@ -141,6 +168,7 @@ module.exports = {
   obtenerPorSala,
   buscarPorId,
   existeConflicto,
+  calcularHorasReservadasEnDia,
   cancelar,
   obtenerTodas,
 };
