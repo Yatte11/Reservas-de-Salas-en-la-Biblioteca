@@ -30,9 +30,10 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # Copiar dependencias desde la etapa anterior
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copiar el código fuente y la base de datos
+# Copiar el código fuente, la base de datos y el frontend
 COPY src/ ./src/
 COPY database/ ./database/
+COPY public/ ./public/
 
 # Crear directorio para la base de datos con permisos correctos
 RUN mkdir -p /app/data && chown -R appuser:appgroup /app
