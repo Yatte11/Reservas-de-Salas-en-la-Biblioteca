@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reservas de Salas — Biblioteca</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ── Navbar ── */
+    nav {
+      background: #1e293b;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+    }
+    nav .logo { font-size: 1.2rem; font-weight: 700; color: #38bdf8; }
+    nav .usuario-info { font-size: 0.9rem; color: #94a3b8; display: flex; gap: 1rem; align-items: center; }
+    nav .btn-logout {
+      background: #ef4444; color: white; border: none;
+      padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    }
+
+    /* ── Pantallas ── */
+    .pantalla { display: none; }
+    .pantalla.activa { display: block; }
+
+    /* ── Auth ── */
+    .auth-container {
+      max-width: 420px; margin: 4rem auto; padding: 2rem;
+      background: #1e293b; border-radius: 12px; border: 1px solid #334155;
+    }
+    .auth-container h2 { text-align: center; margin-bottom: 1.5rem; color: #38bdf8; }
+    .tabs { display: flex; margin-bottom: 1.5rem; border-radius: 8px; overflow: hidden; }
+    .tab {
+      flex: 1; padding: 0.6rem; text-align: center; cursor: pointer;
+      background: #0f172a; color: #94a3b8; font-size: 0.9rem; border: none;
+    }
+    .tab.activa { background: #38bdf8; color: #0f172a; font-weight: 600; }
+
+    /* ── Formularios ── */
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.4rem; }
+    input, select, textarea {
+      width: 100%; padding: 0.6rem 0.8rem;
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; color: #e2e8f0; font-size: 0.95rem;
+    }
+    input:focus, select:focus { outline: none; border-color: #38bdf8; }
+
+    .btn {
+      width: 100%; padding: 0.7rem; border: none; border-radius: 8px;
+      cursor: pointer; font-size: 1rem; font-weight: 600; margin-top: 0.5rem;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #38bdf8; color: #0f172a; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-sm {
+      width: auto; padding: 0.35rem 0.8rem; font-size: 0.8rem; margin-top: 0;
+    }
+
+    /* ── App ── */
+    .app-container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    .app-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .app-tab {
+      padding: 0.5rem 1.2rem; border-radius: 8px; cursor: pointer;
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-size: 0.9rem;
+    }
+    .app-tab.activa { background: #38bdf8; color: #0f172a; border-color: #38bdf8; font-weight: 600; }
+
+    /* ── Cards ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.2rem;
+    }
+    .card h3 { color: #38bdf8; margin-bottom: 0.5rem; }
+    .card p { font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem; }
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600; margin-top: 0.5rem;
+    }
+    .badge-activa { background: #064e3b; color: #6ee7b7; }
+    .badge-cancelada { background: #450a0a; color: #fca5a5; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      justify-content: center; align-items: center;
+    }
+    .modal-overlay.activo { display: flex; }
+    .modal {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 2rem; width: 100%; max-width: 440px;
+    }
+    .modal h3 { color: #38bdf8; margin-bottom: 1.2rem; }
+    .modal-btns { display: flex; gap: 0.8rem; margin-top: 1rem; }
+    .modal-btns .btn { margin-top: 0; }
+
+    /* ── Alertas ── */
+    .alerta {
+      padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem;
+      font-size: 0.9rem; display: none;
+    }
+    .alerta.activa { display: block; }
+    .alerta-error { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+    .alerta-exito { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+
+    .spinner { text-align: center; padding: 2rem; color: #94a3b8; }
+    .empty { text-align: center; padding: 2rem; color: #64748b; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav id="navbar" style="display:none">
+  <div class="logo">📚 Biblioteca — Reservas</div>
+  <div class="usuario-info">
+    <span id="nav-nombre"></span>
+    <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════ -->
+<!-- PANTALLA: AUTH                         -->
+<!-- ══════════════════════════════════════ -->
+<div id="pantalla-auth" class="pantalla activa">
+  <div class="auth-container">
+    <h2>📚 Reservas de Biblioteca</h2>
+
+    <div class="tabs">
+      <button class="tab activa" onclick="cambiarTab('login')">Iniciar sesión</button>
+      <button class="tab" onclick="cambiarTab('registro')">Registrarse</button>
+    </div>
+
+    <!-- Login -->
+    <div id="form-login">
+      <div id="alerta-login" class="alerta alerta-error"></div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="tu@correo.com" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="login()">Iniciar sesión</button>
+    </div>
+
+    <!-- Registro -->
+    <div id="form-registro" style="display:none">
+      <div id="alerta-registro" class="alerta alerta-error"></div>
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="reg-nombre" placeholder="Tu nombre" />
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="reg-email" placeholder="tu@correo.com" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña <small style="color:#64748b">(mín. 8 caracteres, 1 mayúscula, 1 número)</small></label>
+        <input type="password" id="reg-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="registro()">Crear cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- PANTALLA: APP                          -->
+<!-- ══════════════════════════════════════ -->
+<div id="pantalla-app" class="pantalla">
+  <div class="app-container">
+
+    <div class="app-tabs">
+      <button class="app-tab activa" onclick="mostrarSeccion('salas')">🏛️ Salas disponibles</button>
+      <button class="app-tab" onclick="mostrarSeccion('mis-reservas')">📅 Mis reservas</button>
+    </div>
+
+    <!-- ── Sección: Salas disponibles ── -->
+    <div id="seccion-salas">
+      <div style="display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; align-items:flex-end">
+        <div class="form-group" style="margin:0; flex:1; min-width:150px">
+          <label>Fecha</label>
+          <input type="date" id="filtro-fecha" />
+        </div>
+        <div class="form-group" style="margin:0; flex:1; min-width:120px">
+          <label>Hora inicio</label>
+          <input type="time" id="filtro-inicio" />
+        </div>
+        <div class="form-group" style="margin:0; flex:1; min-width:120px">
+          <label>Hora fin</label>
+          <input type="time" id="filtro-fin" />
+        </div>
+        <button class="btn btn-primary" style="width:auto; padding:0.6rem 1.2rem; margin:0" onclick="buscarSalas()">
+          Buscar
+        </button>
+      </div>
+      <div id="alerta-salas" class="alerta alerta-error"></div>
+      <div id="lista-salas" class="grid"><div class="spinner">Cargando salas...</div></div>
+    </div>
+
+    <!-- ── Sección: Mis reservas ── -->
+    <div id="seccion-mis-reservas" style="display:none">
+      <div id="alerta-reservas" class="alerta alerta-error"></div>
+      <div id="lista-reservas" class="grid"><div class="spinner">Cargando reservas...</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- MODAL: Crear reserva                   -->
+<!-- ══════════════════════════════════════ -->
+<div id="modal-reserva" class="modal-overlay">
+  <div class="modal">
+    <h3>📅 Reservar sala</h3>
+    <div id="alerta-modal" class="alerta alerta-error"></div>
+    <p id="modal-sala-nombre" style="color:#94a3b8; margin-bottom:1rem;"></p>
+    <div class="form-group">
+      <label>Fecha</label>
+      <input type="date" id="modal-fecha" />
+    </div>
+    <div class="form-group">
+      <label>Hora de inicio</label>
+      <input type="time" id="modal-inicio" />
+    </div>
+    <div class="form-group">
+      <label>Hora de fin</label>
+      <input type="time" id="modal-fin" />
+    </div>
+    <div class="form-group">
+      <label>Propósito (opcional)</label>
+      <input type="text" id="modal-proposito" placeholder="Ej: Reunión de proyecto" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="confirmarReserva()">Confirmar reserva</button>
+      <button class="btn btn-danger" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '';  // mismo origen
+  let token = localStorage.getItem('token');
+  let salaSeleccionada = null;
+
+  // ── Inicializar ──────────────────────────────────────────────────────────────
+
+  window.onload = () => {
+    token = localStorage.getItem('token');
+    if (token) mostrarApp();
+    // Poner fecha de hoy por defecto
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('filtro-fecha').value = hoy;
+    document.getElementById('modal-fecha').value = hoy;
+  };
+
+  // ── Auth ─────────────────────────────────────────────────────────────────────
+
+  function cambiarTab(tab) {
+    document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('form-registro').style.display = tab === 'registro' ? 'block' : 'none';
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('activa', (tab === 'login' && i === 0) || (tab === 'registro' && i === 1));
+    });
+  }
+
+  async function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    ocultarAlerta('alerta-login');
+
+    try {
+      const res = await fetch(`${API}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return mostrarAlerta('alerta-login', data.mensaje);
+
+      localStorage.setItem('token', data.datos.token);
+      localStorage.setItem('usuario', JSON.stringify(data.datos.usuario));
+      token = data.datos.token;
+      mostrarApp();
+    } catch {
+      mostrarAlerta('alerta-login', 'Error de conexión con el servidor');
+    }
+  }
+
+  async function registro() {
+    const nombre = document.getElementById('reg-nombre').value;
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+    ocultarAlerta('alerta-registro');
+
+    try {
+      const res = await fetch(`${API}/api/v1/auth/registro`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return mostrarAlerta('alerta-registro', data.mensaje || data.errores?.[0]?.mensaje);
+
+      mostrarAlerta('alerta-registro', '¡Cuenta creada! Ahora inicia sesión.', true);
+      setTimeout(() => cambiarTab('login'), 1500);
+    } catch {
+      mostrarAlerta('alerta-registro', 'Error de conexión con el servidor');
+    }
+  }
+
+  function cerrarSesion() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    token = null;
+    document.getElementById('navbar').style.display = 'none';
+    document.getElementById('pantalla-app').classList.remove('activa');
+    document.getElementById('pantalla-auth').classList.add('activa');
+  }
+
+  function mostrarApp() {
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    document.getElementById('nav-nombre').textContent = usuario.nombre || '';
+    document.getElementById('navbar').style.display = 'flex';
+    document.getElementById('pantalla-auth').classList.remove('activa');
+    document.getElementById('pantalla-app').classList.add('activa');
+    cargarSalas();
+  }
+
+  // ── Salas ────────────────────────────────────────────────────────────────────
+
+  async function cargarSalas() {
+    try {
+      const res = await fetch(`${API}/api/v1/salas`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      renderSalas(data.datos || []);
+    } catch {
+      mostrarAlerta('alerta-salas', 'Error al cargar las salas');
+    }
+  }
+
+  async function buscarSalas() {
+    const fecha = document.getElementById('filtro-fecha').value;
+    const inicio = document.getElementById('filtro-inicio').value;
+    const fin = document.getElementById('filtro-fin').value;
+    ocultarAlerta('alerta-salas');
+
+    if (!fecha) return mostrarAlerta('alerta-salas', 'Selecciona una fecha');
+
+    let url = `${API}/api/v1/salas/disponibles?fecha=${fecha}`;
+    if (inicio) url += `&hora_inicio=${inicio}`;
+    if (fin) url += `&hora_fin=${fin}`;
+
+    document.getElementById('lista-salas').innerHTML = '<div class="spinner">Buscando...</div>';
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) return mostrarAlerta('alerta-salas', data.mensaje);
+      renderSalas(data.datos || []);
+    } catch {
+      mostrarAlerta('alerta-salas', 'Error al buscar salas');
+    }
+  }
+
+  function renderSalas(salas) {
+    const cont = document.getElementById('lista-salas');
+    if (!salas.length) {
+      cont.innerHTML = '<div class="empty">No hay salas disponibles para ese horario</div>';
+      return;
+    }
+    cont.innerHTML = salas.map(s => `
+      <div class="card">
+        <h3>${s.nombre}</h3>
+        <p>👥 Capacidad: <strong>${s.capacidad} personas</strong></p>
+        <p>📍 ${s.ubicacion}</p>
+        ${s.descripcion ? `<p style="font-style:italic">${s.descripcion}</p>` : ''}
+        <button class="btn btn-primary btn-sm" style="margin-top:0.8rem"
+          onclick="abrirModal(${s.id}, '${s.nombre.replace(/'/g, "\\'")}')">
+          Reservar
+        </button>
+      </div>
+    `).join('');
+  }
+
+  // ── Modal reserva ─────────────────────────────────────────────────────────────
+
+  function abrirModal(salaId, salaNombre) {
+    salaSeleccionada = salaId;
+    document.getElementById('modal-sala-nombre').textContent = `Sala: ${salaNombre}`;
+    // Copiar filtros al modal
+    const fecha = document.getElementById('filtro-fecha').value;
+    const inicio = document.getElementById('filtro-inicio').value;
+    const fin = document.getElementById('filtro-fin').value;
+    if (fecha) document.getElementById('modal-fecha').value = fecha;
+    if (inicio) document.getElementById('modal-inicio').value = inicio;
+    if (fin) document.getElementById('modal-fin').value = fin;
+    ocultarAlerta('alerta-modal');
+    document.getElementById('modal-reserva').classList.add('activo');
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-reserva').classList.remove('activo');
+    salaSeleccionada = null;
+  }
+
+  async function confirmarReserva() {
+    const fecha = document.getElementById('modal-fecha').value;
+    const hora_inicio = document.getElementById('modal-inicio').value;
+    const hora_fin = document.getElementById('modal-fin').value;
+    const proposito = document.getElementById('modal-proposito').value;
+    ocultarAlerta('alerta-modal');
+
+    if (!fecha || !hora_inicio || !hora_fin)
+      return mostrarAlerta('alerta-modal', 'Completa la fecha y horario');
+
+    try {
+      const res = await fetch(`${API}/api/v1/reservas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sala_id: salaSeleccionada, fecha, hora_inicio, hora_fin, proposito }),
+      });
+      const data = await res.json();
+      if (!res.ok) return mostrarAlerta('alerta-modal', data.mensaje);
+
+      cerrarModal();
+      mostrarSeccion('mis-reservas');
+    } catch {
+      mostrarAlerta('alerta-modal', 'Error al crear la reserva');
+    }
+  }
+
+  // ── Mis reservas ──────────────────────────────────────────────────────────────
+
+  async function cargarMisReservas() {
+    document.getElementById('lista-reservas').innerHTML = '<div class="spinner">Cargando...</div>';
+    try {
+      const res = await fetch(`${API}/api/v1/reservas`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      renderReservas(data.datos || []);
+    } catch {
+      mostrarAlerta('alerta-reservas', 'Error al cargar reservas');
+    }
+  }
+
+  function renderReservas(reservas) {
+    const cont = document.getElementById('lista-reservas');
+    if (!reservas.length) {
+      cont.innerHTML = '<div class="empty">No tienes reservas aún</div>';
+      return;
+    }
+    cont.innerHTML = reservas.map(r => `
+      <div class="card">
+        <h3>${r.sala_nombre}</h3>
+        <p>📅 ${r.fecha}</p>
+        <p>🕐 ${r.hora_inicio} — ${r.hora_fin}</p>
+        ${r.proposito ? `<p>📝 ${r.proposito}</p>` : ''}
+        <p>📍 ${r.sala_ubicacion || ''}</p>
+        <span class="badge badge-${r.estado}">${r.estado.toUpperCase()}</span>
+        ${r.estado === 'activa' ? `
+          <button class="btn btn-danger btn-sm" style="margin-top:0.8rem"
+            onclick="cancelarReserva(${r.id})">
+            Cancelar
+          </button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  async function cancelarReserva(id) {
+    if (!confirm('¿Seguro que quieres cancelar esta reserva?')) return;
+    try {
+      const res = await fetch(`${API}/api/v1/reservas/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) cargarMisReservas();
+      else {
+        const data = await res.json();
+        mostrarAlerta('alerta-reservas', data.mensaje);
+      }
+    } catch {
+      mostrarAlerta('alerta-reservas', 'Error al cancelar la reserva');
+    }
+  }
+
+  // ── Navegación ────────────────────────────────────────────────────────────────
+
+  function mostrarSeccion(seccion) {
+    document.getElementById('seccion-salas').style.display = seccion === 'salas' ? 'block' : 'none';
+    document.getElementById('seccion-mis-reservas').style.display = seccion === 'mis-reservas' ? 'block' : 'none';
+    document.querySelectorAll('.app-tab').forEach((t, i) => {
+      t.classList.toggle('activa', (seccion === 'salas' && i === 0) || (seccion === 'mis-reservas' && i === 1));
+    });
+    if (seccion === 'mis-reservas') cargarMisReservas();
+    if (seccion === 'salas') cargarSalas();
+  }
+
+  // ── Alertas ───────────────────────────────────────────────────────────────────
+
+  function mostrarAlerta(id, mensaje, esExito = false) {
+    const el = document.getElementById(id);
+    el.textContent = mensaje;
+    el.className = `alerta activa ${esExito ? 'alerta-exito' : 'alerta-error'}`;
+  }
+
+  function ocultarAlerta(id) {
+    const el = document.getElementById(id);
+    el.className = 'alerta';
+  }
+</script>
+</body>
+</html>
