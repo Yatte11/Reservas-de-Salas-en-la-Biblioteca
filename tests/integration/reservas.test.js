@@ -130,7 +130,7 @@ describe('POST /api/v1/reservas', () => {
 
 describe('GET /api/v1/reservas', () => {
   test('200 — devuelve solo las reservas del usuario autenticado', async () => {
-    const { id, token } = await crearUsuarioYToken();
+    const { token } = await crearUsuarioYToken();
     const salaId = await crearSala();
 
     await request(app)
