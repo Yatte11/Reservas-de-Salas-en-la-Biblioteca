@@ -21,7 +21,7 @@ info:
 servers:
   - url: http://localhost:3000/api/v1
     description: Servidor de desarrollo local
-  - url: https://reservas-biblioteca.railway.app/api/v1
+  - url: https://reservas-de-salas-en-la-biblioteca-production.up.railway.app/api/v1
     description: Servidor de producción (Railway)
 
 tags:
