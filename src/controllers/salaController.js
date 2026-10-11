@@ -67,6 +67,12 @@ const crearSala = async (req, res, next) => {
   try {
     const { nombre, capacidad, ubicacion, descripcion } = req.body;
 
+    // Verificar nombre duplicado proactivamente
+    const salaExistente = await SalaModel.buscarPorNombre(nombre);
+    if (salaExistente) {
+      return error(res, 'Ya existe una sala con ese nombre', 409);
+    }
+
     const { lastID } = await SalaModel.crear({ nombre, capacidad, ubicacion, descripcion });
 
     logger.info('Nueva sala creada', { id: lastID, nombre });
@@ -92,6 +98,13 @@ const actualizarSala = async (req, res, next) => {
     }
 
     const { nombre, capacidad, ubicacion, descripcion } = req.body;
+
+    // Verificar nombre duplicado en otra sala
+    const otraSala = await SalaModel.buscarPorNombre(nombre, id);
+    if (otraSala) {
+      return error(res, 'Ya existe otra sala con ese nombre', 409);
+    }
+
     await SalaModel.actualizar(id, { nombre, capacidad, ubicacion, descripcion });
 
     const salaActualizada = await SalaModel.buscarPorId(id);

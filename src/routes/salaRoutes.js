@@ -16,6 +16,7 @@ const reservaController = require('../controllers/reservaController');
 const { verificarToken, verificarAdmin } = require('../middlewares/authMiddleware');
 const {
   validarCrearSala,
+  validarActualizarSala,
   validarIdParam,
   validarDisponibilidad,
 } = require('../middlewares/validators');
@@ -28,7 +29,7 @@ router.get('/:id/reservas', verificarToken, validarIdParam, reservaController.re
 
 // Rutas de administración
 router.post('/', verificarToken, verificarAdmin, validarCrearSala, salaController.crearSala);
-router.put('/:id', verificarToken, verificarAdmin, validarIdParam, validarCrearSala, salaController.actualizarSala);
+router.put('/:id', verificarToken, verificarAdmin, validarIdParam, validarActualizarSala, salaController.actualizarSala);
 router.delete('/:id', verificarToken, verificarAdmin, validarIdParam, salaController.eliminarSala);
 
 module.exports = router;
