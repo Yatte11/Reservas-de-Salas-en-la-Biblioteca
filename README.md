@@ -99,6 +99,12 @@ La API estará disponible en `http://localhost:3000`.
 
 La documentación Swagger estará en `http://localhost:3000/api-docs`.
 
+### Producción
+
+🚀 **https://reservas-de-salas-en-la-biblioteca-production.up.railway.app**
+
+- Documentación API: https://reservas-de-salas-en-la-biblioteca-production.up.railway.app/api-docs
+
 ### Con Docker
 
 ```bash

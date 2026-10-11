@@ -143,5 +143,8 @@ Railway (https://railway.app) — servicio gratuito con soporte para aplicacione
 4. Se eliminó la copia de `docs/` del Dockerfile final
 
 ### URL de despliegue
-Pendiente configuración del token `RAILWAY_TOKEN` en GitHub Secrets.  
-Pipeline de deploy configurado en `.github/workflows/ci.yml` — se activa automáticamente en cada push a `main`.
+**https://reservas-de-salas-en-la-biblioteca-production.up.railway.app**
+
+- API raíz: https://reservas-de-salas-en-la-biblioteca-production.up.railway.app/
+- Documentación Swagger: https://reservas-de-salas-en-la-biblioteca-production.up.railway.app/api-docs
+- Estado: ✅ Online
