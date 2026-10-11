@@ -13,6 +13,9 @@ process.env.NODE_ENV = 'test';
 process.env.DB_PATH = ':memory:';
 process.env.JWT_SECRET = 'secreto_test';
 
+let contador = 0;
+const uid = () => `cr_${++contador}_${Math.random().toString(36).slice(2)}`;
+
 const db = require('../../src/config/database');
 const ReservaModel = require('../../src/models/reservaModel');
 const SalaModel = require('../../src/models/salaModel');
@@ -34,13 +37,13 @@ let salaId;
 beforeEach(async () => {
   const usuario = await UsuarioModel.crear({
     nombre: 'Tester Crear',
-    email: `crear_${Date.now()}@test.com`,
+    email: `crear_${uid()}@test.com`,
     passwordHash: 'hash_test',
   });
   usuarioId = usuario.lastID;
 
   const sala = await SalaModel.crear({
-    nombre: `Sala Crear ${Date.now()}`,
+    nombre: `Sala Crear ${uid()}`,
     capacidad: 6,
     ubicacion: 'Piso 1',
   });
