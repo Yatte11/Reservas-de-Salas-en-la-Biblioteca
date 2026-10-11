@@ -9,9 +9,10 @@ const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
 const { verificarToken, verificarAdmin } = require('../middlewares/authMiddleware');
+const { validarActualizarPerfil } = require('../middlewares/validators');
 
 router.get('/perfil', verificarToken, usuarioController.obtenerPerfil);
-router.put('/perfil', verificarToken, usuarioController.actualizarPerfil);
+router.put('/perfil', verificarToken, validarActualizarPerfil, usuarioController.actualizarPerfil);
 router.get('/', verificarToken, verificarAdmin, usuarioController.listarUsuarios);
 
 module.exports = router;
