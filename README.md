@@ -120,6 +120,9 @@ docker-compose up -d
 | `GET` | `/api/v1/salas` | Listar todas las salas | ✅ |
 | `GET` | `/api/v1/salas/disponibles` | Salas disponibles por fecha/hora | ✅ |
 | `POST` | `/api/v1/salas` | Crear sala (solo admin) | ✅ |
+| `GET` | `/api/v1/salas/:id` | Obtener sala por ID | ✅ |
+| `PUT` | `/api/v1/salas/:id` | Actualizar sala (solo admin) | ✅ |
+| `DELETE` | `/api/v1/salas/:id` | Desactivar sala (solo admin) | ✅ |
 | `GET` | `/api/v1/reservas` | Mis reservas | ✅ |
 | `POST` | `/api/v1/reservas` | Crear reserva | ✅ |
 | `DELETE` | `/api/v1/reservas/:id` | Cancelar reserva | ✅ |
@@ -158,7 +161,7 @@ Consulta [CONTRIBUTING.md](./CONTRIBUTING.md) para conocer las convenciones de c
 | Integrante 2 | `feature/gestion-salas` |
 | Integrante 3 | `feature/gestion-reservas` |
 | Integrante 4 | `feature/pruebas-seguridad` |
-| Integrante 5 | `feature/despliegue-ci-cd` |
+| Integrante 5 | `feature/admin-salas` |
 
 ---
 

@@ -99,4 +99,23 @@ const obtenerDisponibles = async (fecha, horaInicio, horaFin) => {
   return consultar(sql, [fecha, horaFin, horaInicio, horaFin, horaInicio, horaInicio, horaFin]);
 };
 
-module.exports = { obtenerTodas, buscarPorId, crear, actualizar, eliminar, obtenerDisponibles };
+/**
+ * Busca una sala activa por nombre, excluyendo opcionalmente un ID (para edición)
+ * @param {string} nombre
+ * @param {number|null} excluirId - ID de la sala a excluir del resultado (usar en PUT)
+ * @returns {Promise<Object|null>}
+ */
+const buscarPorNombre = (nombre, excluirId = null) => {
+  if (excluirId !== null) {
+    return consultarUno(
+      'SELECT * FROM salas WHERE nombre = ? AND id != ? AND activa = 1',
+      [nombre, excluirId]
+    );
+  }
+  return consultarUno(
+    'SELECT * FROM salas WHERE nombre = ? AND activa = 1',
+    [nombre]
+  );
+};
+
+module.exports = { obtenerTodas, buscarPorId, crear, actualizar, eliminar, obtenerDisponibles, buscarPorNombre };

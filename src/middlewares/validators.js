@@ -72,6 +72,26 @@ const validarCrearSala = [
   validar,
 ];
 
+// Validación para actualizar una sala (PUT: todos los campos son obligatorios)
+const validarActualizarSala = [
+  body('nombre')
+    .trim()
+    .notEmpty().withMessage('El nombre de la sala es obligatorio')
+    .isLength({ max: 100 }).withMessage('El nombre no puede superar 100 caracteres'),
+  body('capacidad')
+    .notEmpty().withMessage('La capacidad es obligatoria')
+    .isInt({ min: 1, max: 200 }).withMessage('La capacidad debe ser un entero entre 1 y 200'),
+  body('ubicacion')
+    .trim()
+    .notEmpty().withMessage('La ubicación es obligatoria')
+    .isLength({ max: 200 }).withMessage('La ubicación no puede superar 200 caracteres'),
+  body('descripcion')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('La descripción no puede superar 500 caracteres'),
+  validar,
+];
+
 // --- Validaciones de reservas ---
 
 const validarCrearReserva = [
@@ -129,6 +149,7 @@ module.exports = {
   validarRegistro,
   validarLogin,
   validarCrearSala,
+  validarActualizarSala,
   validarCrearReserva,
   validarIdParam,
   validarDisponibilidad,
