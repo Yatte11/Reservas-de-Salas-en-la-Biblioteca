@@ -10,6 +10,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const { inicializarDB } = require('./config/database');
 const errorHandler = require('./middlewares/errorHandler');
@@ -26,7 +27,9 @@ const app = express();
 // ─── Seguridad y middlewares globales ────────────────────────────────────────
 
 // Cabeceras de seguridad HTTP
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // permite cargar recursos del frontend
+}));
 
 // CORS: solo permitir orígenes configurados
 app.use(cors({
@@ -56,6 +59,10 @@ if (process.env.NODE_ENV !== 'test') {
 // Parseo de JSON y URL-encoded
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// ─── Servir frontend estático ────────────────────────────────────────────────
+
+app.use(express.static(path.join(__dirname, '../public')));
 
 // ─── Documentación Swagger ───────────────────────────────────────────────────
 
