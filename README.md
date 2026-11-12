@@ -5,7 +5,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green)]()
 [![Licencia](https://img.shields.io/badge/licencia-MIT-blue)]()
 
-API REST para la gestión y reserva de salas de estudio en una biblioteca universitaria. Desarrollada como parte de la **Práctica 3 — Ingeniería de Software Moderna** aplicando el ciclo de vida SDLC con herramientas de IA generativa.
+API REST y aplicación web para la gestión y reserva de salas de estudio en una biblioteca universitaria. Desarrollada como parte de la **Práctica 3 — Ingeniería de Software Moderna** aplicando el ciclo de vida SDLC con herramientas de IA generativa.
 
 ---
 
